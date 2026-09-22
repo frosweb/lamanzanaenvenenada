@@ -2,411 +2,197 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador de Credenciales Seguro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <title>Buscador Seguro por URL</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #020617; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
         .mask-text { font-family: monospace; letter-spacing: 0.15em; }
+        .touch-active:active { transform: scale(0.97); }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
 
     <!-- Header -->
-    <header class="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-20 shadow-2xl">
-        <div class="max-w-7xl mx-auto px-4 py-3.5 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center gap-3">
-            <div class="flex items-center space-x-3">
-                <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
-                    <i class="fa-solid fa-user-shield text-white text-lg"></i>
+    <header class="bg-slate-900/90 backdrop-blur-xl border-b border-slate-800/80 sticky top-0 z-20 shadow-xl">
+        <div class="max-w-7xl mx-auto px-3.5 py-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-user-shield text-white text-base"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        Gestor de Credenciales
-                        <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full">Privado</span>
-                    </h1>
-                    <p class="text-xs text-slate-400" id="total-count">Cargando...</p>
+                    <h1 class="text-sm sm:text-base font-bold text-white tracking-tight">Gestor Cifrado</h1>
+                    <p class="text-[11px] text-slate-400" id="total-count">Esperando clave de descifrado...</p>
                 </div>
             </div>
             
-            <div class="flex items-center gap-2">
-                <!-- Toggle All Passwords -->
-                <button onclick="toggleAllVisibility()" id="btn-toggle-all" class="bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/60 px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center gap-2 shadow-sm" title="Mostrar u Ocultar todo">
-                    <i class="fa-solid fa-eye" id="toggle-all-icon"></i>
+            <div class="flex items-center gap-1.5">
+                <button onclick="toggleAllVisibility()" id="btn-toggle-all" class="bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-slate-700/60 p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 touch-active">
+                    <i class="fa-solid fa-eye text-sm" id="toggle-all-icon"></i>
                     <span id="toggle-all-text" class="hidden sm:inline">Revelar Todo</span>
                 </button>
 
-                <!-- Add Record -->
-                <button onclick="openModalForAdd()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl font-medium text-xs transition-all shadow-lg shadow-indigo-600/25 flex items-center gap-2">
-                    <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Nuevo Registro</span>
-                </button>
-
-                <!-- Export Backup -->
-                <button onclick="exportData()" class="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-300 px-3 py-2 rounded-xl text-xs transition-all" title="Exportar Respaldo JSON">
-                    <i class="fa-solid fa-download"></i>
+                <button onclick="openModalForAdd()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 sm:px-3.5 sm:py-2 rounded-xl font-medium text-xs flex items-center gap-1.5 touch-active">
+                    <i class="fa-solid fa-plus text-sm"></i> <span class="hidden sm:inline">Nuevo</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-5">
+    <!-- Master Password Prompt -->
+    <div id="auth-banner" class="bg-indigo-950/40 border-b border-indigo-500/30 p-3 px-4">
+        <div class="max-w-md mx-auto flex gap-2">
+            <input type="password" id="master-key" placeholder="Introduce la contraseña maestra para desencriptar..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="decryptUrlData()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap">Desbloquear</button>
+        </div>
+    </div>
 
-        <!-- Search Bar with Privacy Toggle -->
-        <div class="relative group">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-indigo-400 transition-colors">
-                <i class="fa-solid fa-magnifying-glass text-base"></i>
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+
+        <!-- Search Bar -->
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i class="fa-solid fa-magnifying-glass text-sm"></i>
             </div>
             <input type="password" id="search-input" onkeyup="filterRecords()" 
-                placeholder="Buscar por correo, clave, RIF, cédula o notas..." 
-                class="w-full pl-11 pr-24 py-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/80 shadow-inner text-sm transition-all mask-text">
+                placeholder="Buscar correo, clave, RIF, cédula o notas..." 
+                class="w-full pl-10 pr-20 py-3 bg-slate-900/90 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner text-xs sm:text-sm transition-all mask-text">
             
-            <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-1.5">
-                <button type="button" onclick="toggleSearchInputVisibility()" id="toggle-search-btn" class="text-slate-500 hover:text-slate-300 p-1.5 rounded-lg transition-colors" title="Mostrar/Ocultar lo que escribes">
-                    <i class="fa-solid fa-eye-slash" id="toggle-search-icon"></i>
+            <div class="absolute inset-y-0 right-0 pr-2 flex items-center gap-1">
+                <button type="button" onclick="toggleSearchInputVisibility()" class="text-slate-500 hover:text-slate-300 p-2 rounded-lg">
+                    <i class="fa-solid fa-eye-slash text-xs sm:text-sm" id="toggle-search-icon"></i>
                 </button>
-                <button id="clear-search" onclick="clearSearch()" class="hidden text-slate-500 hover:text-slate-200 p-1.5 rounded-lg transition-colors">
-                    <i class="fa-solid fa-xmark text-base"></i>
+                <button id="clear-search" onclick="clearSearch()" class="hidden text-slate-500 hover:text-slate-200 p-2 rounded-lg">
+                    <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Protection Banner -->
-        <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-2xl p-3 px-4 flex items-center justify-between text-xs text-indigo-300/90">
-            <div class="flex items-center gap-2.5">
-                <i class="fa-solid fa-lock text-indigo-400 text-sm"></i>
-                <span>Tus datos sensibles están enmascarados visualmente para evitar miradas indiscretas.</span>
-            </div>
-            <span class="hidden md:inline text-[11px] text-slate-500">Usa el ícono del ojo para revelar individualmente.</span>
-        </div>
-
-        <!-- Results Table Card -->
-        <div class="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden flex-1 flex flex-col">
-            <div class="overflow-x-auto custom-scrollbar flex-1">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-slate-900/90 border-b border-slate-800 text-slate-400 font-semibold uppercase text-[11px] tracking-wider">
-                            <th class="py-3.5 px-5">Correo / Usuario</th>
-                            <th class="py-3.5 px-5">Contraseña / RIF / Cédula</th>
-                            <th class="py-3.5 px-5">Detalles / Notas</th>
-                            <th class="py-3.5 px-5 text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-800/50">
-                        <!-- Content generated dynamically -->
-                    </tbody>
-                </table>
+        <!-- Mobile & Desktop Views -->
+        <div class="flex-1 flex flex-col">
+            <div class="hidden md:block bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden flex-1">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-900/90 border-b border-slate-800 text-slate-400 font-semibold uppercase text-[11px] tracking-wider">
+                                <th class="py-3.5 px-5">Correo / Usuario</th>
+                                <th class="py-3.5 px-5">Contraseña / RIF / Cédula</th>
+                                <th class="py-3.5 px-5">Detalles / Notas</th>
+                                <th class="py-3.5 px-5 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-slate-800/50"></tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- Empty State -->
-            <div id="empty-state" class="hidden py-16 text-center text-slate-500">
-                <i class="fa-solid fa-shield-cat text-4xl mb-3 opacity-30"></i>
-                <p class="text-sm">No se encontraron datos coincidentes.</p>
+            <div id="mobile-cards-container" class="md:hidden flex flex-col gap-3"></div>
+
+            <div id="empty-state" class="py-12 text-center text-slate-500">
+                <i class="fa-solid fa-shield-cat text-3xl mb-2 opacity-30"></i>
+                <p class="text-xs" id="empty-msg">Ingresa tu clave maestra para ver la información alojada en la URL.</p>
             </div>
         </div>
     </main>
 
     <!-- Modal Form for Adding/Editing Records -->
-    <div id="record-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <h3 id="modal-title" class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+    <div id="record-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl max-w-md w-full p-5 shadow-2xl relative">
+            <h3 id="modal-title" class="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-key text-indigo-400"></i> Nuevo Registro
             </h3>
-            <form id="record-form" onsubmit="saveRecord(event)" class="space-y-4">
+            <form id="record-form" onsubmit="saveRecord(event)" class="space-y-3.5">
                 <input type="hidden" id="modal-id">
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Correo o Usuario *</label>
-                    <input type="text" id="modal-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Correo o Usuario *</label>
+                    <input type="text" id="modal-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white outline-none text-xs sm:text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Clave / RIF / Cédula</label>
-                    <input type="text" id="modal-password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Clave / RIF / Cédula</label>
+                    <input type="text" id="modal-password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white outline-none text-xs sm:text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Detalles / Notas Adicionales</label>
-                    <textarea id="modal-notes" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm" placeholder="Ej: Pago verificado, metros del terreno, etc."></textarea>
+                    <label class="block text-[11px] font-medium text-slate-400 mb-1">Detalles / Notas Adicionales</label>
+                    <textarea id="modal-notes" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white outline-none text-xs sm:text-sm"></textarea>
                 </div>
-                <div class="flex justify-end gap-3 pt-3">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-indigo-600/30">Guardar Datos</button>
+                <div class="flex justify-end gap-2.5 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs">Cancelar</button>
+                    <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-medium">Guardar y Encriptar en URL</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-3 z-50 border border-indigo-500/30">
-        <i class="fa-solid fa-circle-check text-base"></i>
-        <span id="toast-msg" class="text-xs font-medium">Copiado al portapapeles</span>
+    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-5 sm:translate-x-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-2 z-50 text-xs font-medium">
+        <i class="fa-solid fa-circle-check text-sm"></i>
+        <span id="toast-msg">Acción completada</span>
     </div>
 
-    <!-- JavaScript -->
     <script>
-        const initialData = [
-            { email: "merelamanuel@gmail.com", password: "v5403371", notes: "" },
-            { email: "angeldejesusgutierrez542@gmail.com", password: "v19830542", notes: "" },
-            { email: "jesusarmandouzcanga@hotmail.com", password: "v6351238", notes: "" },
-            { email: "abreuestevzla@gmail.com", password: "23Alcaldiat", notes: "" },
-            { email: "markia.blanco@grupomistral.com", password: "ocumare*2023", notes: "" },
-            { email: "picbris@gmail.com", password: "mideseo2012", notes: "" },
-            { email: "zulacoro22@hotmail.com", password: "mishijos2", notes: "" },
-            { email: "josesoyano756@gmail.com", password: "v10077756", notes: "" },
-            { email: "haideeazuaje140@gmail.com", password: "v10074140", notes: "" },
-            { email: "joseadossantos221@gmail.com", password: "v6411221", notes: "" },
-            { email: "inversioneselgrancoche@gmail.com", password: "coche20*", notes: "" },
-            { email: "veitia931@hotmail.com", password: "Av10891785", notes: "RIF: 108917853 | 467.51 m2 c | 968.66 m2 | 22391806" },
-            { email: "inversionesaccionaria@hotmail.com", password: "j305533180", notes: "J-30555331-8" },
-            { email: "rg9384060@gmail.com", password: "Venezuela1", notes: "" },
-            { email: "floriscar33@gmail.com", password: "v10075706", notes: "" },
-            { email: "julioalvarez395@hotmail.com", password: "v2468395", notes: "" },
-            { email: "crlozano168@gmail.com", password: "v24281859", notes: "" },
-            { email: "deliabenitez000@gmail.com", password: "v10091000", notes: "" },
-            { email: "garciamorela30@gmail.com", password: "morela54@", notes: "" },
-            { email: "luzmariaurbina477@gmail.com", password: "v6282477", notes: "" },
-            { email: "inversionesmvdaoud2024@gmail.com", password: "Caracas2024 / Caracas24", notes: "" },
-            { email: "angelamireyaayala422@gmail.com", password: "v6095422", notes: "" },
-            { email: "mercedescalzadilla783@gmail.com", password: "v1296783", notes: "" },
-            { email: "filomenadossantos075@gmail.com", password: "e09880750", notes: "" },
-            { email: "johelingranadillo@gmail.com", password: "Valentinna24*", notes: "" },
-            { email: "elsaflorenciaserrano234@gmail.com", password: "v3222234", notes: "" },
-            { email: "mercadoeltorero@hotmail.com", password: "Santi123", notes: "" },
-            { email: "edwardparedes919@gmail.com", password: "v15222919", notes: "" },
-            { email: "yelimarmartinez993@gmail.com", password: "v17473993", notes: "" },
-            { email: "josefinachanohan996@gmail.com", password: "v7264992", notes: "167 construcción | 181.42 terreno" },
-            { email: "aidajosefinaruiz741@gmail.com", password: "v3222741", notes: "" },
-            { email: "mariogregorio328@gmail.com", password: "e81379328", notes: "" },
-            { email: "mariacolumbalugo406@gmail.com", password: "v14421406", notes: "" },
-            { email: "dacong407@gmail.com", password: "v24618309", notes: "" },
-            { email: "carmenmariameneses111@gmail.com", password: "v4287111", notes: "" },
-            { email: "pinafrancavasarelli@gmail.com", password: "v3632379", notes: "" },
-            { email: "carlosalbertogutierrez186@gmail.com", password: "v12086186", notes: "" },
-            { email: "anaoldonez974@gmail.com", password: "v6179974", notes: "" },
-            { email: "anateresaherrera105@gmail.com", password: "v2966105", notes: "" },
-            { email: "monicaceciliapaez@gmail.com", password: "v12304168", notes: "" },
-            { email: "carmenelisarodriguez808@gmail.com", password: "v1296808", notes: "" },
-            { email: "emmadelgado050@gmail.com", password: "v2850050", notes: "" },
-            { email: "carlosguillermogarcia586@gmail.com", password: "v16091586", notes: "Número 2007.33 asiento 1, inmueble matriculado 231.13.5.1.34 - Fecha 10/10/2008" },
-            { email: "yusvelyteran496@gmail.com", password: "v12820496", notes: "" },
-            { email: "weihung440@gmail.com", password: "v3748050", notes: "V-03748050-5" },
-            { email: "grecialeal845@gmail.com", password: "v18389845", notes: "" },
-            { email: "luzmarinaoropeza059@gmail.com", password: "v6405059", notes: "" },
-            { email: "carmentorresdeacosta@gmail.com", password: "Carmen*48 / Eractor57*", notes: "José Acosta Martin v36317848 - C 3145.8 - T1270 (modificación)" },
-            { email: "angelamiguelinavaldez433@gmail.com", password: "v2582433", notes: "" },
-            { email: "peilanwu934@gmail.com", password: "v19201934", notes: "" },
-            { email: "olimpiaalvarez916@gmail.com", password: "v6416916", notes: "" },
-            { email: "ditsimeneses670@gmail.com", password: "v10075670", notes: "" },
-            { email: "omerlysgoncalves358@gmail.com", password: "v17928358", notes: "" },
-            { email: "angelmiguelquintero720@gmail.com", password: "v14013720", notes: "" },
-            { email: "emiliaabratesucesion@gmail.com", password: "Emiliaabrate22", notes: "" },
-            { email: "jacquestantak463@hotmail.com", password: "v10115463", notes: "" },
-            { email: "jennerpinto296@gmail.com", password: "v22041296", notes: "" },
-            { email: "marisarosati2@gmail.com", password: "Mwarisa11", notes: "" },
-            { email: "mariadejesusarevalo810@gmail.com", password: "v4290810", notes: "" },
-            { email: "sofia.barriosp1974@gmail.com", password: "v123005771", notes: "" },
-            { email: "cesarbarrio214@gmail.com", password: "v123005771", notes: "" },
-            { email: "villamizarcarlos160@gmail.com", password: "Corina2!!", notes: "VERIFICADO PAGO" },
-            { email: "manuelgouveia992@gmail.com", password: "v24281992", notes: "" },
-            { email: "lealgrecia@hotmail.com", password: "Caracas12a", notes: "" },
-            { email: "Italodipascuale48@gmail.com", password: "italo1948", notes: "" },
-            { email: "beatrizestanga916@gmail.com", password: "v6422916", notes: "" },
-            { email: "angelicaperdomodeaponte017@gmail.com", password: "v4289017", notes: "" },
-            { email: "jesusgregoriotorres130@gmail.com", password: "v6997130", notes: "" },
-            { email: "imarafernandez38@gmail.com", password: "IF*treinta8 / Treinta8*", notes: "" },
-            { email: "relojeriayjoyeriaeltuy@gmail.com", password: "v1622993", notes: "" },
-            { email: "salgadomiguel026@gmail.com", password: "v3026888", notes: "" },
-            { email: "yriani286@gmail.com", password: "v6408286", notes: "" },
-            { email: "carlosvaldirio445@gmail.com", password: "v12085445", notes: "" },
-            { email: "orianyisvillamizar329@gmail.com", password: "v21724329", notes: "" },
-            { email: "rosaascanio017@gmail.com", password: "v5400017", notes: "" },
-            { email: "yolandaarteaga128@gmail.com", password: "v7921128", notes: "" },
-            { email: "juanohanesian885@gmail.com", password: "v17928885", notes: "" },
-            { email: "dionyacosta740@gmail.com", password: "v16552740", notes: "80 / 800" },
-            { email: "danielfernandezgonzalez536@gmail.com", password: "v6151536", notes: "" },
-            { email: "julioyacondino@gmail.com", password: "sumar1234", notes: "" },
-            { email: "teamiteslegales1959@gmail.com", password: "Nolose123*", notes: "" },
-            { email: "pablojosuesalazar478@gmail.com", password: "v12304478", notes: "" },
-            { email: "jnicola.peralta@gmail.com", password: "Ocumare151225", notes: "" },
-            { email: "josemanuelponteg@gmail.com", password: "26787935jm", notes: "" },
-            { email: "joseponte037@gmail.com", password: "v24282037", notes: "" },
-            { email: "josemondragon2585@gmail.com", password: "v2575732", notes: "" },
-            { email: "froilanacarrasquel838@gmail.com", password: "v1290838", notes: "" },
-            { email: "ziruzhen438@hotmail.com", password: "j12345678 / e84439438", notes: "" },
-            { email: "jmonzalve975@gmail.com", password: "v13217975", notes: "(Modi)" },
-            { email: "sousa656@hotmail.com", password: "v16935411", notes: "64850939" },
-            { email: "hastine406@gmail.com", password: "v16935411", notes: "" },
-            { email: "ceferinomendoza014@gmail.com", password: "v4286014", notes: "" },
-            { email: "rubencastrillo848@gmail.com", password: "v18130848", notes: "315,83 / 70020906" },
-            { email: "aerodaytona1@gmail.com", password: "daytona1010", notes: "" },
-            { email: "antonia1950dasilva@gmail.com", password: "v13380220", notes: "SE MANDO PAGO 12/01/2023 - VERIFICADO EL PAGO - DEBE PAGAR EL 2022" },
-            { email: "larrypaz1955@gmail.com", password: "v3632518-2", notes: "305 / 580 | Se pidió Solvencia listo todo | Consultar deuda. | SE MANDO PAGO 12/01/2023 - VERIFICADO EL PAGO - LISTA LA SOLVENCIA" },
-            { email: "eleazar1955mendoza@gmail.com", password: "v4290640", notes: "Lista la solvencias - Verificar cuánto inmueble y ver cuánto pagará cada uno" },
-            { email: "mariapilarmatamoros1959@gmail.com", password: "v11229060", notes: "" },
-            { email: "whbamoris@gmail.com", password: "v23614511 -1", notes: "SE MANDO PAGO 12/01/2023 - SE VERIFICO PAGO - SE PIDIO TASA DE SOLVENCIA" },
-            { email: "ramadanwassou964@gmail.com", password: "e84597964", notes: "" },
-            { email: "josegregoriogutierrez853@gmail.com", password: "v6417853", notes: "" },
-            { email: "mandozapierrangela@gmail.com", password: "v23614239", notes: "" },
-            { email: "rosablanco366@gmail.com", password: "v6413959", notes: "" },
-            { email: "leonardochavez1954@gmail.com", password: "e81624168", notes: "" },
-            { email: "anateresaescalante1954@gmail.com", password: "v4292949", notes: "042929499" },
-            { email: "olimarperez345@gmail.com", password: "v13760345", notes: "SUCESION VIGUERAS (Modi) - Pago verificado / FALTA EL OTRO INMUEBLE" },
-            { email: "joseluisdesousaponte@hotmail.com", password: "clave065", notes: "" },
-            { email: "lgousheng93@gmail.com", password: "e84483550", notes: "Se solicito pago de solvencia" },
-            { email: "zhaodianfeng1969@gmail.com", password: "e82289029", notes: "Chino de parque tuy | 34155166 Solvencia | 34169605 Trimestre" },
-            { email: "wilson1960ramirez@gmail.com", password: "v6053094", notes: "" },
-            { email: "Leidyc20@gmail.com", password: "Dar02021980", notes: "" },
-            { email: "yanettdelvalleacuna@gmail.com", password: "v6406258", notes: "" },
-            { email: "ramirocuenlas@gmail.com", password: "v6094939", notes: "" },
-            { email: "mariacandelariagutierrez315@gmail.com", password: "v7920315", notes: "Jose Vicente Martinez Arteagas y Sucesion Rosa Amelia Vivas de Martinez (modi)" },
-            { email: "joseluisdesousaponte1955@gmail.com", password: "v100780280", notes: "(modi)" },
-            { email: "josefinachahonan@hotmail.com", password: "v7264996", notes: "" },
-            { email: "antoniovillareal151@gmail.com", password: "v4236151", notes: "" },
-            { email: "antoniocatanho907@hotmail.com", password: "e81283907", notes: "(Modi)" },
-            { email: "vicenteastone549@gmail.com", password: "v5400549", notes: "" },
-            { email: "yohandytorrealba@hotmail.com", password: "v18131027", notes: "" },
-            { email: "efrainbelleve@hotmail.com", password: "v00246253", notes: "" },
-            { email: "carmenbolivarardila@hotmail.com", password: "v3335422", notes: "" },
-            { email: "rauladefrasdesouda@hotmail.com", password: "V6990923", notes: "" },
-            { email: "antonioaugusto878@hotmail.com", password: "v10335878", notes: "" },
-            { email: "josemejia148@homail.com", password: "v6408148", notes: "" },
-            { email: "carlamendoza125@hotmail.com", password: "v12821125", notes: "" },
-            { email: "gregoriosuarez939@hotmail.com", password: "v7861939", notes: "" },
-            { email: "labdulcar2@hotmail.com", password: "V*3766374", notes: "" },
-            { email: "luque_mervy@hotmail.com", password: "V-10192840-0", notes: "Razon Social: MEDINA GUEVARA YNIRIDA" },
-            { email: "agustinsuarezcabrera561@gmail.com", password: "v6328561", notes: "" },
-            { email: "monserratrodriguez568hotmail.com", password: "v6170568", notes: "" },
-            { email: "mariadelgado494@hotmail.com", password: "v24281494", notes: "Se envió pagó" },
-            { email: "rahcarlosgarcia@gmail.com", password: "carlos07", notes: "En revisión de pago (aprobado pago) - Lista la solvencia, culmino proceso" },
-            { email: "marlluryacosta477@hotmail.com", password: "v6405477", notes: "Se mando pago, se pidió Solvencia, culmino el proceso | RIF: mallury25a / v64054771" },
-            { email: "mariselagonzalez922@hotmail.com", password: "v6405922", notes: "" },
-            { email: "inversionesmilquince@hotmail.com", password: "j297609547", notes: "" },
-            { email: "harrywood239@hotmail.com", password: "v1456239", notes: "" },
-            { email: "graterolmayela3450@hotmail.com", password: "graterol1", notes: "" },
-            { email: "silviaperez083@hotmail.com", password: "v16093083", notes: "" },
-            { email: "marisela230957@gmail.com", password: "mr4289213", notes: "" },
-            { email: "eneidaarcia994@hotmail.com", password: "v6992994", notes: "" },
-            { email: "mariacolemenares982@hotmail.com", password: "v6997982", notes: "" },
-            { email: "jorgedavidsaid548@hotmail.com", password: "v4246548", notes: "" },
-            { email: "franciscoarcia738@hotmail.com", password: "v11836915", notes: "" },
-            { email: "dalilavallecillo@hotmail.com", password: "e82090946", notes: "" },
-            { email: "simonamorena581@hotmail.com", password: "v2576581", notes: "" },
-            { email: "linorios929@hotmail.com", password: "linorios292", notes: "" },
-            { email: "wasnellparedes@hotmail.com", password: "v13143175", notes: "" },
-            { email: "gutierrezangel861@hotmail.com", password: "v12084861", notes: "" },
-            { email: "auroraalvarez732@gmail.com", password: "clave065", notes: "" },
-            { email: "joseantoniozerpa066@hotmail.com", password: "v6895066", notes: "" },
-            { email: "alfredoantolinez717@hotmail.com", password: "v5401717", notes: "" },
-            { email: "adelaidacordero234@hotmail.com", password: "v10482234", notes: "" },
-            { email: "suministroscredimport@gmail.com", password: "---", notes: "" },
-            { email: "rinahindoyan@gmail.com", password: "---", notes: "" },
-            { email: "yoselhindoyan155@hotmail.com", password: "v16811155", notes: "" },
-            { email: "everjennysrepillosa@hotmail.com", password: "v14839070", notes: "" },
-            { email: "josecarpio256@hotmail.com", password: "v14013256", notes: "" },
-            { email: "joseluisgarcia151@hotmail.com", password: "v6825151", notes: "" },
-            { email: "mariobarrientos359@hotmail.com", password: "v22534359", notes: "" },
-            { email: "floremelero@gmail.com", password: "yolanda10", notes: "" },
-            { email: "carlinamendoza965@hotmail.com", password: "v6424965", notes: "" },
-            { email: "yurmisflores373@hotmail.com", password: "v14155373", notes: "" },
-            { email: "alexiscentrevegas@gmail.com", password: "v10075306", notes: "v14827440" },
-            { email: "manuelcapella2023@gmail.com", password: "mangos28", notes: "" },
-            { email: "quiripital24@gmail.com", password: "Tacoronte22", notes: "" },
-            { email: "antonioivopereira2705@gmail.com", password: "pluto2705", notes: "23/03/1968" },
-            { email: "maykelduarte668@hotmail.com", password: "v1589166", notes: "" },
-            { email: "carmenmeneses287@gmail.com", password: "v4287111", notes: "" },
-            { email: "inarteca@hotmail.com", password: "v3472684", notes: "" },
-            { email: "noraloyo641@hotmail.com", password: "v13542641", notes: "" },
-            { email: "jojea6423@gmail.com", password: "Vidas6423", notes: "" },
-            { email: "oscarpinto884@hotmail.com", password: "v10891884", notes: "" },
-            { email: "dannyfernandez723@hotmail.com", password: "v14035723", notes: "" },
-            { email: "edgarmijares145@gmail.com", password: "v1291908", notes: "" },
-            { email: "vicentabarcena@gmail.com", password: "v1291908", notes: "" },
-            { email: "jesusenriquepacheco610@gmail.com", password: "v4291610", notes: "ceferinohernandez383@gmail.com - E5133834" },
-            { email: "yairelin_castillo@hotmail.com", password: "joanca%09", notes: "" },
-            { email: "belkisalvarez1959@gmail.com", password: "Ba30071959", notes: "(Modificado)" },
-            { email: "joseluisrosquete260@gmail.com", password: "v6413260", notes: "(Modificado)" },
-            { email: "dagfeela@gmail.com", password: "Dagfeela1971", notes: "" },
-            { email: "localcomercial001@gmail.com", password: "24282037local", notes: "(Modificado)" },
-            { email: "mariamoreliapena513@gmail.com", password: "v6997423", notes: "" },
-            { email: "marleneaular859@gmail.com", password: "v12302859", notes: "" },
-            { email: "beba_yenluis@hotmail.com", password: "chispita$4", notes: "" },
-            { email: "jennyjudithmota752@gmail.com", password: "v12617752", notes: "MOTA PARADA JENNY JUDITH | 06415667" },
-            { email: "maryoriesalazar584@gmail.com", password: "v13582584", notes: "" },
-            { email: "carlosgarcias5869@gmail.com", password: "v16091586", notes: "" },
-            { email: "gilbertoantoniomedina988@gmail.com", password: "v6423988", notes: "" },
-            { email: "carloscastrotanez631@gmail.com", password: "v12304631", notes: "" },
-            { email: "victordesadequinta@gmail.com", password: "v13542544", notes: "" },
-            { email: "karlafenghe610@gmail.com", password: "v27559610", notes: "" },
-            { email: "mendozaceferino014@gmail.com", password: "v4286014", notes: "" },
-            { email: "carloshernandez6351@gmail.com", password: "v30850635", notes: "" },
-            { email: "imarafernandez381@gmail.com", password: "v42911338", notes: "" },
-            { email: "jaimefung947@gmail.com", password: "v30623947", notes: "" },
-            { email: "liubagoncalves12@gmail.com", password: "v12085892", notes: "" },
-            { email: "licoreriadisprotuyca@gmail.com", password: "j306239470", notes: "" },
-            { email: "bertatrejocalderon@gmail.com", password: "v4288467", notes: "" },
-            { email: "deisyluna547@gmail.com", password: "v6998547", notes: "" },
-            { email: "alcidesguzman213@hotmail.com", password: "v12975213", notes: "" },
-            { email: "mendozaceferino286@gmail.com", password: "v4286014", notes: "" },
-            { email: "jesusportillo2884@gmail.com", password: "v2884471", notes: "" },
-            { email: "luisaolivares4285@gmail.com", password: "v4285240", notes: "" },
-            { email: "felipebiella829@hotmail.com", password: "v10072829", notes: "" },
-            { email: "jhancris2016@gmail.com", password: "Saida2026", notes: "" },
-            { email: "dulcepaz615@gmail.com", password: "v5403615", notes: "" },
-            { email: "carmenparra313@hotmail.com", password: "v19502313", notes: "" },
-            { email: "llairagr.61@gmail.com", password: "josegg10@", notes: "" },
-            { email: "antoniojosegomez244@gmail.com", password: "v1280244", notes: "" },
-            { email: "jorgepernia499@gmail.com", password: "v9120096", notes: "" },
-            { email: "senaidagutierrez300@gmail.com", password: "v4288300", notes: "" },
-            { email: "segundoarguinzones@gmail.com", password: "v10077508", notes: "" },
-            { email: "neivytovar632@gmail.com", password: "v10071632", notes: "" },
-            { email: "meldisvelasquez255@hotmail.com", password: "v11969255", notes: "" },
-            { email: "edgarhernandez4173@gmail.com", password: "v6264173", notes: "" },
-            { email: "melonecarmen827@hotmail.com", password: "v12975827", notes: "arika31diaz@gmail.com / Agosto2015*" },
-            { email: "manuelmartinm841@gmail.com", password: "v13760841", notes: "" },
-            { email: "franciscomijares840@gmail.com", password: "v19028840", notes: "" },
-            { email: "nestormirabal625@gmail.com", password: "v6825625", notes: "" }
-        ];
-
         let records = [];
-        let visiblePasswords = {}; // Visibilidad por registro
-        let visibleNotes = {}; // Visibilidad de notas por registro
+        let currentPasskey = '';
+        let visiblePasswords = {};
+        let visibleNotes = {};
         let allVisible = false;
 
-        function loadData() {
-            const stored = localStorage.getItem('credentials_db');
-            if (stored) {
-                records = JSON.parse(stored);
-            } else {
-                records = initialData.map((item, index) => ({
-                    id: Date.now() + index,
-                    ...item
-                }));
-                saveToLocalStorage();
+        function decryptUrlData() {
+            const passkey = document.getElementById('master-key').value.trim();
+            const hash = window.location.hash.substring(1);
+
+            if (!passkey) {
+                showToast("Por favor ingresa tu contraseña maestra");
+                return;
             }
-            
-            records = records.map((item, index) => {
-                if (!item.id) item.id = Date.now() + index;
-                return item;
-            });
-            
-            renderTable(records);
+
+            if (!hash) {
+                document.getElementById('empty-msg').textContent = "La URL no contiene información cifrada (#).";
+                return;
+            }
+
+            try {
+                const bytes = CryptoJS.AES.decrypt(hash, passkey);
+                const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+
+                if (Array.isArray(decryptedData)) {
+                    records = decryptedData;
+                    currentPasskey = passkey;
+                    document.getElementById('auth-banner').classList.add('hidden');
+                    renderData(records);
+                    showToast("Datos desencriptados con éxito");
+                } else {
+                    throw new Error("Formato inválido");
+                }
+            } catch (e) {
+                showToast("Contraseña maestra incorrecta");
+            }
         }
 
-        function saveToLocalStorage() {
-            localStorage.setItem('credentials_db', JSON.stringify(records));
+        function updateUrlHash() {
+            if (!currentPasskey) return;
+            const encrypted = CryptoJS.AES.encrypt(JSON.stringify(records), currentPasskey).toString();
+            window.history.replaceState(null, null, '#' + encrypted);
         }
 
-        function renderTable(data) {
+        function renderData(data) {
             const tbody = document.getElementById('table-body');
+            const mobileContainer = document.getElementById('mobile-cards-container');
             const emptyState = document.getElementById('empty-state');
             const countLabel = document.getElementById('total-count');
 
             tbody.innerHTML = '';
-            countLabel.textContent = `${data.length} de ${records.length} registros`;
+            mobileContainer.innerHTML = '';
+            countLabel.textContent = `${data.length} de ${records.length} datos`;
 
             if (data.length === 0) {
                 emptyState.classList.remove('hidden');
+                document.getElementById('empty-msg').textContent = "No se encontraron registros.";
                 return;
             } else {
                 emptyState.classList.add('hidden');
@@ -422,28 +208,22 @@
                 const displayPassword = isPassVisible ? (item.password || '---') : maskPass;
                 const displayNotes = isNoteVisible ? item.notes : maskNote;
 
+                // Desktop Row
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800/40 transition-colors group';
-                
                 row.innerHTML = `
                     <td class="py-3.5 px-5 text-slate-100 font-medium">
                         <div class="flex items-center gap-2">
                             <span class="break-all">${escapeHtml(item.email)}</span>
-                            <button onclick="copyToClipboard('${escapeJs(item.email)}')" class="text-slate-600 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity p-1" title="Copiar correo">
-                                <i class="fa-regular fa-copy"></i>
-                            </button>
+                            <button onclick="copyToClipboard('${escapeJs(item.email)}')" class="text-slate-600 hover:text-indigo-400 opacity-0 group-hover:opacity-100 p-1"><i class="fa-regular fa-copy"></i></button>
                         </div>
                     </td>
                     <td class="py-3.5 px-5 font-mono text-slate-300">
                         <div class="flex items-center gap-2">
                             <span class="bg-slate-950/80 px-2.5 py-1 rounded-lg border border-slate-800 text-xs tracking-wider">${escapeHtml(displayPassword)}</span>
                             ${item.password ? `
-                            <button onclick="toggleVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1 transition-colors" title="${isPassVisible ? 'Ocultar' : 'Mostrar'} clave">
-                                <i class="fa-solid ${isPassVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
-                            </button>
-                            <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="text-slate-600 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity p-1" title="Copiar clave">
-                                <i class="fa-regular fa-copy"></i>
-                            </button>` : ''}
+                            <button onclick="toggleVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1"><i class="fa-solid ${isPassVisible ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+                            <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="text-slate-600 hover:text-indigo-400 opacity-0 group-hover:opacity-100 p-1"><i class="fa-regular fa-copy"></i></button>` : ''}
                         </div>
                     </td>
                     <td class="py-3.5 px-5 text-slate-400 text-xs">
@@ -452,126 +232,113 @@
                             <span class="bg-indigo-950/30 text-indigo-300 border border-indigo-800/30 px-2.5 py-1 rounded-lg inline-block max-w-xs truncate ${!isNoteVisible ? 'mask-text' : ''}">
                                 ${escapeHtml(displayNotes)}
                             </span>
-                            <button onclick="toggleNoteVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1 transition-colors" title="${isNoteVisible ? 'Ocultar' : 'Mostrar'} nota">
-                                <i class="fa-solid ${isNoteVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
-                            </button>
-                        </div>
-                        ` : '<span class="text-slate-700">-</span>'}
+                            <button onclick="toggleNoteVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1"><i class="fa-solid ${isNoteVisible ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+                        </div>` : '<span class="text-slate-700">-</span>'}
                     </td>
                     <td class="py-3.5 px-5 text-center">
                         <div class="flex justify-center items-center gap-1.5">
-                            <button onclick="copyRow('${escapeJs(item.email)}', '${escapeJs(item.password)}', '${escapeJs(item.notes)}')" class="bg-slate-800/90 hover:bg-indigo-600 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs transition-all" title="Copiar Fila Completa">
-                                <i class="fa-regular fa-clone"></i>
-                            </button>
-                            <button onclick="openModalForEdit(${item.id})" class="bg-slate-800/90 hover:bg-amber-600 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs transition-all" title="Editar Registro">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
-                            <button onclick="deleteRecord(${item.id})" class="bg-slate-800/90 hover:bg-rose-600 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs transition-all" title="Eliminar Registro">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
+                            <button onclick="copyRow('${escapeJs(item.email)}', '${escapeJs(item.password)}', '${escapeJs(item.notes)}')" class="bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs"><i class="fa-regular fa-clone"></i></button>
+                            <button onclick="openModalForEdit(${item.id})" class="bg-slate-800 hover:bg-amber-600 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteRecord(${item.id})" class="bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </td>
                 `;
                 tbody.appendChild(row);
+
+                // Mobile Card
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 border border-slate-800/90 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-lg';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[10px] text-slate-500 uppercase font-semibold">Correo / Usuario</div>
+                            <div class="text-xs font-semibold text-slate-100 truncate flex items-center gap-1.5">
+                                <span class="truncate">${escapeHtml(item.email)}</span>
+                                <button onclick="copyToClipboard('${escapeJs(item.email)}')" class="text-slate-500 hover:text-indigo-400 p-1"><i class="fa-regular fa-copy text-xs"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 bg-slate-950/60 border border-slate-800 rounded-xl p-1">
+                            <button onclick="copyRow('${escapeJs(item.email)}', '${escapeJs(item.password)}', '${escapeJs(item.notes)}')" class="p-1.5 text-slate-400 hover:text-indigo-400"><i class="fa-regular fa-clone text-xs"></i></button>
+                            <button onclick="openModalForEdit(${item.id})" class="p-1.5 text-slate-400 hover:text-amber-400"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                            <button onclick="deleteRecord(${item.id})" class="p-1.5 text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center gap-2 bg-slate-950/40 p-2 rounded-xl border border-slate-800/50">
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-semibold">Clave / RIF</div>
+                            <div class="font-mono text-xs text-slate-200 tracking-wider">${escapeHtml(displayPassword)}</div>
+                        </div>
+                        ${item.password ? `
+                        <div class="flex items-center gap-1">
+                            <button onclick="toggleVisibility(${item.id})" class="p-1.5 text-slate-500 hover:text-indigo-400"><i class="fa-solid ${isPassVisible ? 'fa-eye-slash' : 'fa-eye'} text-xs"></i></button>
+                            <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="p-1.5 text-slate-500 hover:text-indigo-400"><i class="fa-regular fa-copy text-xs"></i></button>
+                        </div>` : ''}
+                    </div>
+                    ${item.notes ? `
+                    <div class="bg-indigo-950/20 border border-indigo-800/20 rounded-xl p-2 flex justify-between items-center gap-2">
+                        <div class="text-[11px] text-indigo-300 break-all ${!isNoteVisible ? 'mask-text' : ''}">${escapeHtml(displayNotes)}</div>
+                        <button onclick="toggleNoteVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1"><i class="fa-solid ${isNoteVisible ? 'fa-eye-slash' : 'fa-eye'} text-xs"></i></button>
+                    </div>` : ''}
+                `;
+                mobileContainer.appendChild(card);
             });
         }
 
-        function toggleVisibility(id) {
-            visiblePasswords[id] = !visiblePasswords[id];
-            filterRecords();
-        }
-
-        function toggleNoteVisibility(id) {
-            visibleNotes[id] = !visibleNotes[id];
-            filterRecords();
-        }
+        function toggleVisibility(id) { visiblePasswords[id] = !visiblePasswords[id]; filterRecords(); }
+        function toggleNoteVisibility(id) { visibleNotes[id] = !visibleNotes[id]; filterRecords(); }
 
         function toggleAllVisibility() {
             allVisible = !allVisible;
-            const icon = document.getElementById('toggle-all-icon');
-            const text = document.getElementById('toggle-all-text');
-
-            if (allVisible) {
-                icon.className = "fa-solid fa-eye-slash";
-                text.textContent = "Ocultar Todo";
-            } else {
-                icon.className = "fa-solid fa-eye";
-                text.textContent = "Revelar Todo";
-                visiblePasswords = {};
-                visibleNotes = {};
-            }
+            document.getElementById('toggle-all-icon').className = allVisible ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
+            document.getElementById('toggle-all-text').textContent = allVisible ? "Ocultar" : "Revelar Todo";
+            if (!allVisible) { visiblePasswords = {}; visibleNotes = {}; }
             filterRecords();
         }
 
         function toggleSearchInputVisibility() {
-            const searchInput = document.getElementById('search-input');
+            const input = document.getElementById('search-input');
             const icon = document.getElementById('toggle-search-icon');
-            
-            if (searchInput.type === "password") {
-                searchInput.type = "text";
-                icon.className = "fa-solid fa-eye";
-            } else {
-                searchInput.type = "password";
-                icon.className = "fa-solid fa-eye-slash";
-            }
+            input.type = input.type === "password" ? "text" : "password";
+            icon.className = input.type === "password" ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
         }
 
         function filterRecords() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
-            const clearBtn = document.getElementById('clear-search');
-            
-            if (query.length > 0) {
-                clearBtn.classList.remove('hidden');
-            } else {
-                clearBtn.classList.add('hidden');
-            }
-
+            document.getElementById('clear-search').classList.toggle('hidden', query.length === 0);
             const filtered = records.filter(item => 
                 item.email.toLowerCase().includes(query) ||
                 item.password.toLowerCase().includes(query) ||
                 item.notes.toLowerCase().includes(query)
             );
-
-            renderTable(filtered);
+            renderData(filtered);
         }
 
-        function clearSearch() {
-            document.getElementById('search-input').value = '';
-            filterRecords();
-        }
+        function clearSearch() { document.getElementById('search-input').value = ''; filterRecords(); }
 
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(`Copiado al portapapeles`);
-            });
+            navigator.clipboard.writeText(text).then(() => showToast("Copiado al portapapeles"));
         }
 
         function copyRow(email, password, notes) {
             let text = `Correo: ${email}`;
             if (password) text += ` | Clave: ${password}`;
             if (notes) text += ` | Notas: ${notes}`;
-            
-            navigator.clipboard.writeText(text).then(() => {
-                showToast("Fila copiada al portapapeles");
-            });
+            navigator.clipboard.writeText(text).then(() => showToast("Fila copiada"));
         }
 
         function showToast(message) {
             const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-msg');
-            toastMsg.textContent = message;
-            
+            document.getElementById('toast-msg').textContent = message;
             toast.classList.remove('opacity-0', 'translate-y-10');
             toast.classList.add('opacity-100', 'translate-y-0');
-
             setTimeout(() => {
                 toast.classList.remove('opacity-100', 'translate-y-0');
                 toast.classList.add('opacity-0', 'translate-y-10');
             }, 2000);
         }
 
-        // Modal Operations
         function openModalForAdd() {
+            if (!currentPasskey) { showToast("Primero desbloquea la app con la clave maestra"); return; }
             document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-key text-indigo-400"></i> Nuevo Registro';
             document.getElementById('modal-id').value = '';
             document.getElementById('record-form').reset();
@@ -581,13 +348,11 @@
         function openModalForEdit(id) {
             const record = records.find(r => r.id === id);
             if (!record) return;
-
             document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400"></i> Editar Registro';
             document.getElementById('modal-id').value = record.id;
             document.getElementById('modal-email').value = record.email;
             document.getElementById('modal-password').value = record.password || '';
             document.getElementById('modal-notes').value = record.notes || '';
-            
             document.getElementById('record-modal').classList.remove('hidden');
         }
 
@@ -607,54 +372,31 @@
 
             if (id) {
                 const index = records.findIndex(r => r.id == id);
-                if (index !== -1) {
-                    records[index] = { id: Number(id), email, password, notes };
-                    showToast("Registro actualizado correctamente");
-                }
+                if (index !== -1) records[index] = { id: Number(id), email, password, notes };
             } else {
-                const newRecord = { id: Date.now(), email, password, notes };
-                records.unshift(newRecord);
-                showToast("Nuevo registro guardado");
+                records.unshift({ id: Date.now(), email, password, notes });
             }
 
-            saveToLocalStorage();
+            updateUrlHash();
             filterRecords();
             closeModal();
+            showToast("Guardado y URL actualizada");
         }
 
         function deleteRecord(id) {
             const record = records.find(r => r.id === id);
             if (!record) return;
 
-            if (confirm(`¿Estás seguro de que deseas eliminar el registro de "${record.email}"?`)) {
+            if (confirm(`¿Eliminar registro?`)) {
                 records = records.filter(r => r.id !== id);
-                saveToLocalStorage();
+                updateUrlHash();
                 filterRecords();
                 showToast("Registro eliminado");
             }
         }
 
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `respaldo_credenciales_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
-        function escapeJs(str) {
-            if (!str) return '';
-            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-        }
-
-        window.onload = loadData;
+        function escapeHtml(str) { return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : ''; }
+        function escapeJs(str) { return str ? str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"') : ''; }
     </script>
 </body>
 </html>

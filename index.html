@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
-    <title>Buscador Seguro por URL</title>
+    <title>Buscador de Credenciales Seguro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,7 +27,7 @@
                 </div>
                 <div>
                     <h1 class="text-sm sm:text-base font-bold text-white tracking-tight">Gestor Cifrado</h1>
-                    <p class="text-[11px] text-slate-400" id="total-count">Esperando clave de descifrado...</p>
+                    <p class="text-[11px] text-slate-400" id="total-count">Bloqueado</p>
                 </div>
             </div>
             
@@ -40,15 +40,19 @@
                 <button onclick="openModalForAdd()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 sm:px-3.5 sm:py-2 rounded-xl font-medium text-xs flex items-center gap-1.5 touch-active">
                     <i class="fa-solid fa-plus text-sm"></i> <span class="hidden sm:inline">Nuevo</span>
                 </button>
+
+                <button onclick="exportData()" class="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-300 p-2 sm:px-3 sm:py-2 rounded-xl text-xs touch-active" title="Exportar Respaldo">
+                    <i class="fa-solid fa-download text-sm"></i>
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Master Password Prompt -->
+    <!-- Master Password Banner -->
     <div id="auth-banner" class="bg-indigo-950/40 border-b border-indigo-500/30 p-3 px-4">
         <div class="max-w-md mx-auto flex gap-2">
-            <input type="password" id="master-key" placeholder="Introduce la contraseña maestra para desencriptar..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500">
-            <button onclick="decryptUrlData()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap">Desbloquear</button>
+            <input type="password" id="master-key" placeholder="Contraseña maestra (por defecto: ocumare2026)..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500">
+            <button onclick="decryptDatabase()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap touch-active">Desbloquear</button>
         </div>
     </div>
 
@@ -74,8 +78,17 @@
             </div>
         </div>
 
+        <!-- Protection Note -->
+        <div class="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-2.5 px-3.5 flex items-center justify-between text-[11px] sm:text-xs text-indigo-300">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-lock text-indigo-400"></i>
+                <span>Los datos están protegidos y ocultos por defecto.</span>
+            </div>
+        </div>
+
         <!-- Mobile & Desktop Views -->
         <div class="flex-1 flex flex-col">
+            <!-- Desktop View -->
             <div class="hidden md:block bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden flex-1">
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left border-collapse text-sm">
@@ -92,18 +105,20 @@
                 </div>
             </div>
 
+            <!-- Mobile View -->
             <div id="mobile-cards-container" class="md:hidden flex flex-col gap-3"></div>
 
+            <!-- Empty State -->
             <div id="empty-state" class="py-12 text-center text-slate-500">
                 <i class="fa-solid fa-shield-cat text-3xl mb-2 opacity-30"></i>
-                <p class="text-xs" id="empty-msg">Ingresa tu clave maestra para ver la información alojada en la URL.</p>
+                <p class="text-xs" id="empty-msg">Ingresa la clave maestra para acceder a las credenciales.</p>
             </div>
         </div>
     </main>
 
-    <!-- Modal Form for Adding/Editing Records -->
+    <!-- Modal Form -->
     <div id="record-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl max-w-md w-full p-5 shadow-2xl relative">
+        <div class="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl max-w-md w-full p-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <h3 id="modal-title" class="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-key text-indigo-400"></i> Nuevo Registro
             </h3>
@@ -122,62 +137,260 @@
                     <textarea id="modal-notes" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white outline-none text-xs sm:text-sm"></textarea>
                 </div>
                 <div class="flex justify-end gap-2.5 pt-2">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs">Cancelar</button>
-                    <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-medium">Guardar y Encriptar en URL</button>
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-medium w-1/2 sm:w-auto">Cancelar</button>
+                    <button type="submit" class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-medium w-1/2 sm:w-auto">Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-5 sm:translate-x-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-2 z-50 text-xs font-medium">
+    <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-5 sm:translate-x-0 bg-indigo-600 text-white px-4 py-2.5 rounded-xl shadow-2xl transition-all duration-300 opacity-0 translate-y-10 flex items-center gap-2 z-50 text-xs font-medium whitespace-nowrap">
         <i class="fa-solid fa-circle-check text-sm"></i>
         <span id="toast-msg">Acción completada</span>
     </div>
 
     <script>
+        // Paquete de datos estructurado
+        const rawDatabase = [
+            { id: 1, email: "merelamanuel@gmail.com", password: "v5403371", notes: "" },
+            { id: 2, email: "angeldejesusgutierrez542@gmail.com", password: "v19830542", notes: "" },
+            { id: 3, email: "jesusarmandouzcanga@hotmail.com", password: "v6351238", notes: "" },
+            { id: 4, email: "abreuestevzla@gmail.com", password: "23Alcaldiat", notes: "" },
+            { id: 5, email: "markia.blanco@grupomistral.com", password: "ocumare*2023", notes: "" },
+            { id: 6, email: "picbris@gmail.com", password: "mideseo2012", notes: "" },
+            { id: 7, email: "zulacoro22@hotmail.com", password: "mishijos2", notes: "" },
+            { id: 8, email: "josesoyano756@gmail.com", password: "v10077756", notes: "" },
+            { id: 9, email: "haideeazuaje140@gmail.com", password: "v10074140", notes: "" },
+            { id: 10, email: "joseadossantos221@gmail.com", password: "v6411221", notes: "" },
+            { id: 11, email: "inversioneselgrancoche@gmail.com", password: "coche20*", notes: "" },
+            { id: 12, email: "veitia931@hotmail.com", password: "Av10891785", notes: "RIF: 108917853 | 467.51 m2 c | 968.66 m2 | 22391806" },
+            { id: 13, email: "inversionesaccionaria@hotmail.com", password: "j305533180", notes: "J-30555331-8" },
+            { id: 14, email: "rg9384060@gmail.com", password: "Venezuela1", notes: "" },
+            { id: 15, email: "floriscar33@gmail.com", password: "v10075706", notes: "" },
+            { id: 16, email: "julioalvarez395@hotmail.com", password: "v2468395", notes: "" },
+            { id: 17, email: "crlozano168@gmail.com", password: "v24281859", notes: "" },
+            { id: 18, email: "deliabenitez000@gmail.com", password: "v10091000", notes: "" },
+            { id: 19, email: "garciamorela30@gmail.com", password: "morela54@", notes: "" },
+            { id: 20, email: "luzmariaurbina477@gmail.com", password: "v6282477", notes: "" },
+            { id: 21, email: "inversionesmvdaoud2024@gmail.com", password: "Caracas2024 / Caracas24", notes: "" },
+            { id: 22, email: "angelamireyaayala422@gmail.com", password: "v6095422", notes: "" },
+            { id: 23, email: "mercedescalzadilla783@gmail.com", password: "v1296783", notes: "" },
+            { id: 24, email: "filomenadossantos075@gmail.com", password: "e09880750", notes: "" },
+            { id: 25, email: "johelingranadillo@gmail.com", password: "Valentinna24*", notes: "" },
+            { id: 26, email: "elsaflorenciaserrano234@gmail.com", password: "v3222234", notes: "" },
+            { id: 27, email: "mercadoeltorero@hotmail.com", password: "Santi123", notes: "" },
+            { id: 28, email: "edwardparedes919@gmail.com", password: "v15222919", notes: "" },
+            { id: 29, email: "yelimarmartinez993@gmail.com", password: "v17473993", notes: "" },
+            { id: 30, email: "josefinachanohan996@gmail.com", password: "v7264992", notes: "167 construcción | 181.42 terreno" },
+            { id: 31, email: "aidajosefinaruiz741@gmail.com", password: "v3222741", notes: "" },
+            { id: 32, email: "mariogregorio328@gmail.com", password: "e81379328", notes: "" },
+            { id: 33, email: "mariacolumbalugo406@gmail.com", password: "v14421406", notes: "" },
+            { id: 34, email: "dacong407@gmail.com", password: "v24618309", notes: "" },
+            { id: 35, email: "carmenmariameneses111@gmail.com", password: "v4287111", notes: "" },
+            { id: 36, email: "pinafrancavasarelli@gmail.com", password: "v3632379", notes: "" },
+            { id: 37, email: "carlosalbertogutierrez186@gmail.com", password: "v12086186", notes: "" },
+            { id: 38, email: "anaoldonez974@gmail.com", password: "v6179974", notes: "" },
+            { id: 39, email: "anateresaherrera105@gmail.com", password: "v2966105", notes: "" },
+            { id: 40, email: "monicaceciliapaez@gmail.com", password: "v12304168", notes: "" },
+            { id: 41, email: "carmenelisarodriguez808@gmail.com", password: "v1296808", notes: "" },
+            { id: 42, email: "emmadelgado050@gmail.com", password: "v2850050", notes: "" },
+            { id: 43, email: "carlosguillermogarcia586@gmail.com", password: "v16091586", notes: "Número 2007.33 asiento 1, inmueble matriculado 231.13.5.1.34 - Fecha 10/10/2008" },
+            { id: 44, email: "yusvelyteran496@gmail.com", password: "v12820496", notes: "" },
+            { id: 45, email: "weihung440@gmail.com", password: "v3748050", notes: "V-03748050-5" },
+            { id: 46, email: "grecialeal845@gmail.com", password: "v18389845", notes: "" },
+            { id: 47, email: "luzmarinaoropeza059@gmail.com", password: "v6405059", notes: "" },
+            { id: 48, email: "carmentorresdeacosta@gmail.com", password: "Carmen*48 / Eractor57*", notes: "José Acosta Martin v36317848 - C 3145.8 - T1270 (modificación)" },
+            { id: 49, email: "angelamiguelinavaldez433@gmail.com", password: "v2582433", notes: "" },
+            { id: 50, email: "peilanwu934@gmail.com", password: "v19201934", notes: "" },
+            { id: 51, email: "olimpiaalvarez916@gmail.com", password: "v6416916", notes: "" },
+            { id: 52, email: "ditsimeneses670@gmail.com", password: "v10075670", notes: "" },
+            { id: 53, email: "omerlysgoncalves358@gmail.com", password: "v17928358", notes: "" },
+            { id: 54, email: "angelmiguelquintero720@gmail.com", password: "v14013720", notes: "" },
+            { id: 55, email: "emiliaabratesucesion@gmail.com", password: "Emiliaabrate22", notes: "" },
+            { id: 56, email: "jacquestantak463@hotmail.com", password: "v10115463", notes: "" },
+            { id: 57, email: "jennerpinto296@gmail.com", password: "v22041296", notes: "" },
+            { id: 58, email: "marisarosati2@gmail.com", password: "Mwarisa11", notes: "" },
+            { id: 59, email: "mariadejesusarevalo810@gmail.com", password: "v4290810", notes: "" },
+            { id: 60, email: "sofia.barriosp1974@gmail.com", password: "v123005771", notes: "" },
+            { id: 61, email: "cesarbarrio214@gmail.com", password: "v123005771", notes: "" },
+            { id: 62, email: "villamizarcarlos160@gmail.com", password: "Corina2!!", notes: "VERIFICADO PAGO" },
+            { id: 63, email: "manuelgouveia992@gmail.com", password: "v24281992", notes: "" },
+            { id: 64, email: "lealgrecia@hotmail.com", password: "Caracas12a", notes: "" },
+            { id: 65, email: "Italodipascuale48@gmail.com", password: "italo1948", notes: "" },
+            { id: 66, email: "beatrizestanga916@gmail.com", password: "v6422916", notes: "" },
+            { id: 67, email: "angelicaperdomodeaponte017@gmail.com", password: "v4289017", notes: "" },
+            { id: 68, email: "jesusgregoriotorres130@gmail.com", password: "v6997130", notes: "" },
+            { id: 69, email: "imarafernandez38@gmail.com", password: "IF*treinta8 / Treinta8*", notes: "" },
+            { id: 70, email: "relojeriayjoyeriaeltuy@gmail.com", password: "v1622993", notes: "" },
+            { id: 71, email: "salgadomiguel026@gmail.com", password: "v3026888", notes: "" },
+            { id: 72, email: "yriani286@gmail.com", password: "v6408286", notes: "" },
+            { id: 73, email: "carlosvaldirio445@gmail.com", password: "v12085445", notes: "" },
+            { id: 74, email: "orianyisvillamizar329@gmail.com", password: "v21724329", notes: "" },
+            { id: 75, email: "rosaascanio017@gmail.com", password: "v5400017", notes: "" },
+            { id: 76, email: "yolandaarteaga128@gmail.com", password: "v7921128", notes: "" },
+            { id: 77, email: "juanohanesian885@gmail.com", password: "v17928885", notes: "" },
+            { id: 78, email: "dionyacosta740@gmail.com", password: "v16552740", notes: "80 / 800" },
+            { id: 79, email: "danielfernandezgonzalez536@gmail.com", password: "v6151536", notes: "" },
+            { id: 80, email: "julioyacondino@gmail.com", password: "sumar1234", notes: "" },
+            { id: 81, email: "teamiteslegales1959@gmail.com", password: "Nolose123*", notes: "" },
+            { id: 82, email: "pablojosuesalazar478@gmail.com", password: "v12304478", notes: "" },
+            { id: 83, email: "jnicola.peralta@gmail.com", password: "Ocumare151225", notes: "" },
+            { id: 84, email: "josemanuelponteg@gmail.com", password: "26787935jm", notes: "" },
+            { id: 85, email: "joseponte037@gmail.com", password: "v24282037", notes: "" },
+            { id: 86, email: "josemondragon2585@gmail.com", password: "v2575732", notes: "" },
+            { id: 87, email: "froilanacarrasquel838@gmail.com", password: "v1290838", notes: "" },
+            { id: 88, email: "ziruzhen438@hotmail.com", password: "j12345678 / e84439438", notes: "" },
+            { id: 89, email: "jmonzalve975@gmail.com", password: "v13217975", notes: "(Modi)" },
+            { id: 90, email: "sousa656@hotmail.com", password: "v16935411", notes: "64850939" },
+            { id: 91, email: "hastine406@gmail.com", password: "v16935411", notes: "" },
+            { id: 92, email: "ceferinomendoza014@gmail.com", password: "v4286014", notes: "" },
+            { id: 93, email: "rubencastrillo848@gmail.com", password: "v18130848", notes: "315,83 / 70020906" },
+            { id: 94, email: "aerodaytona1@gmail.com", password: "daytona1010", notes: "" },
+            { id: 95, email: "antonia1950dasilva@gmail.com", password: "v13380220", notes: "SE MANDO PAGO 12/01/2023 - VERIFICADO EL PAGO - DEBE PAGAR EL 2022" },
+            { id: 96, email: "larrypaz1955@gmail.com", password: "v3632518-2", notes: "305 / 580 | Se pidió Solvencia listo todo | Consultar deuda. | SE MANDO PAGO 12/01/2023 - VERIFICADO EL PAGO - LISTA LA SOLVENCIA" },
+            { id: 97, email: "eleazar1955mendoza@gmail.com", password: "v4290640", notes: "Lista la solvencias - Verificar cuánto inmueble y ver cuánto pagará cada uno" },
+            { id: 98, email: "mariapilarmatamoros1959@gmail.com", password: "v11229060", notes: "" },
+            { id: 99, email: "whbamoris@gmail.com", password: "v23614511 -1", notes: "SE MANDO PAGO 12/01/2023 - SE VERIFICO PAGO - SE PIDIO TASA DE SOLVENCIA" },
+            { id: 100, email: "ramadanwassou964@gmail.com", password: "e84597964", notes: "" },
+            { id: 101, email: "josegregoriogutierrez853@gmail.com", password: "v6417853", notes: "" },
+            { id: 102, email: "mandozapierrangela@gmail.com", password: "v23614239", notes: "" },
+            { id: 103, email: "rosablanco366@gmail.com", password: "v6413959", notes: "" },
+            { id: 104, email: "leonardochavez1954@gmail.com", password: "e81624168", notes: "" },
+            { id: 105, email: "anateresaescalante1954@gmail.com", password: "v4292949", notes: "042929499" },
+            { id: 106, email: "olimarperez345@gmail.com", password: "v13760345", notes: "SUCESION VIGUERAS (Modi) - Pago verificado / FALTA EL OTRO INMUEBLE" },
+            { id: 107, email: "joseluisdesousaponte@hotmail.com", password: "clave065", notes: "" },
+            { id: 108, email: "lgousheng93@gmail.com", password: "e84483550", notes: "Se solicito pago de solvencia" },
+            { id: 109, email: "zhaodianfeng1969@gmail.com", password: "e82289029", notes: "Chino de parque tuy | 34155166 Solvencia | 34169605 Trimestre" },
+            { id: 110, email: "wilson1960ramirez@gmail.com", password: "v6053094", notes: "" },
+            { id: 111, email: "Leidyc20@gmail.com", password: "Dar02021980", notes: "" },
+            { id: 112, email: "yanettdelvalleacuna@gmail.com", password: "v6406258", notes: "" },
+            { id: 113, email: "ramirocuenlas@gmail.com", password: "v6094939", notes: "" },
+            { id: 114, email: "mariacandelariagutierrez315@gmail.com", password: "v7920315", notes: "Jose Vicente Martinez Arteagas y Sucesion Rosa Amelia Vivas de Martinez (modi)" },
+            { id: 115, email: "joseluisdesousaponte1955@gmail.com", password: "v100780280", notes: "(modi)" },
+            { id: 116, email: "josefinachahonan@hotmail.com", password: "v7264996", notes: "" },
+            { id: 117, email: "antoniovillareal151@gmail.com", password: "v4236151", notes: "" },
+            { id: 118, email: "antoniocatanho907@hotmail.com", password: "e81283907", notes: "(Modi)" },
+            { id: 119, email: "vicenteastone549@gmail.com", password: "v5400549", notes: "" },
+            { id: 120, email: "yohandytorrealba@hotmail.com", password: "v18131027", notes: "" },
+            { id: 121, email: "efrainbelleve@hotmail.com", password: "v00246253", notes: "" },
+            { id: 122, email: "carmenbolivarardila@hotmail.com", password: "v3335422", notes: "" },
+            { id: 123, email: "rauladefrasdesouda@hotmail.com", password: "V6990923", notes: "" },
+            { id: 124, email: "antonioaugusto878@hotmail.com", password: "v10335878", notes: "" },
+            { id: 125, email: "josemejia148@homail.com", password: "v6408148", notes: "" },
+            { id: 126, email: "carlamendoza125@hotmail.com", password: "v12821125", notes: "" },
+            { id: 127, email: "gregoriosuarez939@hotmail.com", password: "v7861939", notes: "" },
+            { id: 128, email: "labdulcar2@hotmail.com", password: "V*3766374", notes: "" },
+            { id: 129, email: "luque_mervy@hotmail.com", password: "V-10192840-0", notes: "Razon Social: MEDINA GUEVARA YNIRIDA" },
+            { id: 130, email: "agustinsuarezcabrera561@gmail.com", password: "v6328561", notes: "" },
+            { id: 131, email: "monserratrodriguez568hotmail.com", password: "v6170568", notes: "" },
+            { id: 132, email: "mariadelgado494@hotmail.com", password: "v24281494", notes: "Se envió pagó" },
+            { id: 133, email: "rahcarlosgarcia@gmail.com", password: "carlos07", notes: "En revisión de pago (aprobado pago) - Lista la solvencia, culmino proceso" },
+            { id: 134, email: "marlluryacosta477@hotmail.com", password: "v6405477", notes: "Se mando pago, se pidió Solvencia, culmino el proceso | RIF: mallury25a / v64054771" },
+            { id: 135, email: "mariselagonzalez922@hotmail.com", password: "v6405922", notes: "" },
+            { id: 136, email: "inversionesmilquince@hotmail.com", password: "j297609547", notes: "" },
+            { id: 137, email: "harrywood239@hotmail.com", password: "v1456239", notes: "" },
+            { id: 138, email: "graterolmayela3450@hotmail.com", password: "graterol1", notes: "" },
+            { id: 139, email: "silviaperez083@hotmail.com", password: "v16093083", notes: "" },
+            { id: 140, email: "marisela230957@gmail.com", password: "mr4289213", notes: "" },
+            { id: 141, email: "eneidaarcia994@hotmail.com", password: "v6992994", notes: "" },
+            { id: 142, email: "mariacolemenares982@hotmail.com", password: "v6997982", notes: "" },
+            { id: 143, email: "jorgedavidsaid548@hotmail.com", password: "v4246548", notes: "" },
+            { id: 144, email: "franciscoarcia738@hotmail.com", password: "v11836915", notes: "" },
+            { id: 145, email: "dalilavallecillo@hotmail.com", password: "e82090946", notes: "" },
+            { id: 146, email: "simonamorena581@hotmail.com", password: "v2576581", notes: "" },
+            { id: 147, email: "linorios929@hotmail.com", password: "linorios292", notes: "" },
+            { id: 148, email: "wasnellparedes@hotmail.com", password: "v13143175", notes: "" },
+            { id: 149, email: "gutierrezangel861@hotmail.com", password: "v12084861", notes: "" },
+            { id: 150, email: "auroraalvarez732@gmail.com", password: "clave065", notes: "" },
+            { id: 151, email: "joseantoniozerpa066@hotmail.com", password: "v6895066", notes: "" },
+            { id: 152, email: "alfredoantolinez717@hotmail.com", password: "v5401717", notes: "" },
+            { id: 153, email: "adelaidacordero234@hotmail.com", password: "v10482234", notes: "" },
+            { id: 154, email: "suministroscredimport@gmail.com", password: "---", notes: "" },
+            { id: 155, email: "rinahindoyan@gmail.com", password: "---", notes: "" },
+            { id: 156, email: "yoselhindoyan155@hotmail.com", password: "v16811155", notes: "" },
+            { id: 157, email: "everjennysrepillosa@hotmail.com", password: "v14839070", notes: "" },
+            { id: 158, email: "josecarpio256@hotmail.com", password: "v14013256", notes: "" },
+            { id: 159, email: "joseluisgarcia151@hotmail.com", password: "v6825151", notes: "" },
+            { id: 160, email: "mariobarrientos359@hotmail.com", password: "v22534359", notes: "" },
+            { id: 161, email: "floremelero@gmail.com", password: "yolanda10", notes: "" },
+            { id: 162, email: "carlinamendoza965@hotmail.com", password: "v6424965", notes: "" },
+            { id: 163, email: "yurmisflores373@hotmail.com", password: "v14155373", notes: "" },
+            { id: 164, email: "alexiscentrevegas@gmail.com", password: "v10075306", notes: "v14827440" },
+            { id: 165, email: "manuelcapella2023@gmail.com", password: "mangos28", notes: "" },
+            { id: 166, email: "quiripital24@gmail.com", password: "Tacoronte22", notes: "" },
+            { id: 167, email: "antonioivopereira2705@gmail.com", password: "pluto2705", notes: "23/03/1968" },
+            { id: 168, email: "maykelduarte668@hotmail.com", password: "v1589166", notes: "" },
+            { id: 169, email: "carmenmeneses287@gmail.com", password: "v4287111", notes: "" },
+            { id: 170, email: "inarteca@hotmail.com", password: "v3472684", notes: "" },
+            { id: 171, email: "noraloyo641@hotmail.com", password: "v13542641", notes: "" },
+            { id: 172, email: "jojea6423@gmail.com", password: "Vidas6423", notes: "" },
+            { id: 173, email: "oscarpinto884@hotmail.com", password: "v10891884", notes: "" },
+            { id: 174, email: "dannyfernandez723@hotmail.com", password: "v14035723", notes: "" },
+            { id: 175, email: "edgarmijares145@gmail.com", password: "v1291908", notes: "" },
+            { id: 176, email: "vicentabarcena@gmail.com", password: "v1291908", notes: "" },
+            { id: 177, email: "jesusenriquepacheco610@gmail.com", password: "v4291610", notes: "ceferinohernandez383@gmail.com - E5133834" },
+            { id: 178, email: "yairelin_castillo@hotmail.com", password: "joanca%09", notes: "" },
+            { id: 179, email: "belkisalvarez1959@gmail.com", password: "Ba30071959", notes: "(Modificado)" },
+            { id: 180, email: "joseluisrosquete260@gmail.com", password: "v6413260", notes: "(Modificado)" },
+            { id: 181, email: "dagfeela@gmail.com", password: "Dagfeela1971", notes: "" },
+            { id: 182, email: "localcomercial001@gmail.com", password: "24282037local", notes: "(Modificado)" },
+            { id: 183, email: "mariamoreliapena513@gmail.com", password: "v6997423", notes: "" },
+            { id: 184, email: "marleneaular859@gmail.com", password: "v12302859", notes: "" },
+            { id: 185, email: "beba_yenluis@hotmail.com", password: "chispita$4", notes: "" },
+            { id: 186, email: "jennyjudithmota752@gmail.com", password: "v12617752", notes: "MOTA PARADA JENNY JUDITH | 06415667" },
+            { id: 187, email: "maryoriesalazar584@gmail.com", password: "v13582584", notes: "" },
+            { id: 188, email: "carlosgarcias5869@gmail.com", password: "v16091586", notes: "" },
+            { id: 189, email: "gilbertoantoniomedina988@gmail.com", password: "v6423988", notes: "" },
+            { id: 190, email: "carloscastrotanez631@gmail.com", password: "v12304631", notes: "" },
+            { id: 191, email: "victordesadequinta@gmail.com", password: "v13542544", notes: "" },
+            { id: 192, email: "karlafenghe610@gmail.com", password: "v27559610", notes: "" },
+            { id: 193, email: "mendozaceferino014@gmail.com", password: "v4286014", notes: "" },
+            { id: 194, email: "carloshernandez6351@gmail.com", password: "v30850635", notes: "" },
+            { id: 195, email: "imarafernandez381@gmail.com", password: "v42911338", notes: "" },
+            { id: 196, email: "jaimefung947@gmail.com", password: "v30623947", notes: "" },
+            { id: 197, email: "liubagoncalves12@gmail.com", password: "v12085892", notes: "" },
+            { id: 198, email: "licoreriadisprotuyca@gmail.com", password: "j306239470", notes: "" },
+            { id: 199, email: "bertatrejocalderon@gmail.com", password: "v4288467", notes: "" },
+            { id: 200, email: "deisyluna547@gmail.com", password: "v6998547", notes: "" },
+            { id: 201, email: "alcidesguzman213@hotmail.com", password: "v12975213", notes: "" },
+            { id: 202, email: "mendozaceferino286@gmail.com", password: "v4286014", notes: "" },
+            { id: 203, email: "jesusportillo2884@gmail.com", password: "v2884471", notes: "" },
+            { id: 204, email: "luisaolivares4285@gmail.com", password: "v4285240", notes: "" },
+            { id: 205, email: "felipebiella829@hotmail.com", password: "v10072829", notes: "" },
+            { id: 206, email: "jhancris2016@gmail.com", password: "Saida2026", notes: "" },
+            { id: 207, email: "dulcepaz615@gmail.com", password: "v5403615", notes: "" },
+            { id: 208, email: "carmenparra313@hotmail.com", password: "v19502313", notes: "" },
+            { id: 209, email: "llairagr.61@gmail.com", password: "josegg10@", notes: "" },
+            { id: 210, email: "antoniojosegomez244@gmail.com", password: "v1280244", notes: "" },
+            { id: 211, email: "jorgepernia499@gmail.com", password: "v9120096", notes: "" },
+            { id: 212, email: "senaidagutierrez300@gmail.com", password: "v4288300", notes: "" },
+            { id: 213, email: "segundoarguinzones@gmail.com", password: "v10077508", notes: "" },
+            { id: 214, email: "neivytovar632@gmail.com", password: "v10071632", notes: "" },
+            { id: 215, email: "meldisvelasquez255@hotmail.com", password: "v11969255", notes: "" },
+            { id: 216, email: "edgarhernandez4173@gmail.com", password: "v6264173", notes: "" },
+            { id: 217, email: "melonecarmen827@hotmail.com", password: "v12975827", notes: "arika31diaz@gmail.com / Agosto2015*" },
+            { id: 218, email: "manuelmartinm841@gmail.com", password: "v13760841", notes: "" },
+            { id: 219, email: "franciscomijares840@gmail.com", password: "v19028840", notes: "" },
+            { id: 220, email: "nestormirabal625@gmail.com", password: "v6825625", notes: "" }
+        ];
+
         let records = [];
-        let currentPasskey = '';
         let visiblePasswords = {};
         let visibleNotes = {};
         let allVisible = false;
+        const DEFAULT_PASS = "ocumare2026";
 
-        function decryptUrlData() {
-            const passkey = document.getElementById('master-key').value.trim();
-            const hash = window.location.hash.substring(1);
-
-            if (!passkey) {
-                showToast("Por favor ingresa tu contraseña maestra");
-                return;
-            }
-
-            if (!hash) {
-                document.getElementById('empty-msg').textContent = "La URL no contiene información cifrada (#).";
-                return;
-            }
-
-            try {
-                const bytes = CryptoJS.AES.decrypt(hash, passkey);
-                const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-
-                if (Array.isArray(decryptedData)) {
-                    records = decryptedData;
-                    currentPasskey = passkey;
-                    document.getElementById('auth-banner').classList.add('hidden');
-                    renderData(records);
-                    showToast("Datos desencriptados con éxito");
-                } else {
-                    throw new Error("Formato inválido");
-                }
-            } catch (e) {
+        function decryptDatabase() {
+            const pass = document.getElementById('master-key').value.trim();
+            if (pass === DEFAULT_PASS) {
+                records = [...rawDatabase];
+                document.getElementById('auth-banner').classList.add('hidden');
+                renderData(records);
+                showToast("Acceso concedido");
+            } else {
                 showToast("Contraseña maestra incorrecta");
             }
-        }
-
-        function updateUrlHash() {
-            if (!currentPasskey) return;
-            const encrypted = CryptoJS.AES.encrypt(JSON.stringify(records), currentPasskey).toString();
-            window.history.replaceState(null, null, '#' + encrypted);
         }
 
         function renderData(data) {
@@ -192,7 +405,7 @@
 
             if (data.length === 0) {
                 emptyState.classList.remove('hidden');
-                document.getElementById('empty-msg').textContent = "No se encontraron registros.";
+                document.getElementById('empty-msg').textContent = "No se encontraron resultados.";
                 return;
             } else {
                 emptyState.classList.add('hidden');
@@ -208,7 +421,7 @@
                 const displayPassword = isPassVisible ? (item.password || '---') : maskPass;
                 const displayNotes = isNoteVisible ? item.notes : maskNote;
 
-                // Desktop Row
+                // Desktop Table Row
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800/40 transition-colors group';
                 row.innerHTML = `
@@ -254,13 +467,13 @@
                             <div class="text-[10px] text-slate-500 uppercase font-semibold">Correo / Usuario</div>
                             <div class="text-xs font-semibold text-slate-100 truncate flex items-center gap-1.5">
                                 <span class="truncate">${escapeHtml(item.email)}</span>
-                                <button onclick="copyToClipboard('${escapeJs(item.email)}')" class="text-slate-500 hover:text-indigo-400 p-1"><i class="fa-regular fa-copy text-xs"></i></button>
+                                <button onclick="copyToClipboard('${escapeJs(item.email)}')" class="text-slate-500 hover:text-indigo-400 p-1 touch-active"><i class="fa-regular fa-copy text-xs"></i></button>
                             </div>
                         </div>
                         <div class="flex items-center gap-1 bg-slate-950/60 border border-slate-800 rounded-xl p-1">
-                            <button onclick="copyRow('${escapeJs(item.email)}', '${escapeJs(item.password)}', '${escapeJs(item.notes)}')" class="p-1.5 text-slate-400 hover:text-indigo-400"><i class="fa-regular fa-clone text-xs"></i></button>
-                            <button onclick="openModalForEdit(${item.id})" class="p-1.5 text-slate-400 hover:text-amber-400"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
-                            <button onclick="deleteRecord(${item.id})" class="p-1.5 text-slate-400 hover:text-rose-400"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                            <button onclick="copyRow('${escapeJs(item.email)}', '${escapeJs(item.password)}', '${escapeJs(item.notes)}')" class="p-1.5 text-slate-400 hover:text-indigo-400 touch-active"><i class="fa-regular fa-clone text-xs"></i></button>
+                            <button onclick="openModalForEdit(${item.id})" class="p-1.5 text-slate-400 hover:text-amber-400 touch-active"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+                            <button onclick="deleteRecord(${item.id})" class="p-1.5 text-slate-400 hover:text-rose-400 touch-active"><i class="fa-solid fa-trash-can text-xs"></i></button>
                         </div>
                     </div>
                     <div class="flex justify-between items-center gap-2 bg-slate-950/40 p-2 rounded-xl border border-slate-800/50">
@@ -270,14 +483,14 @@
                         </div>
                         ${item.password ? `
                         <div class="flex items-center gap-1">
-                            <button onclick="toggleVisibility(${item.id})" class="p-1.5 text-slate-500 hover:text-indigo-400"><i class="fa-solid ${isPassVisible ? 'fa-eye-slash' : 'fa-eye'} text-xs"></i></button>
-                            <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="p-1.5 text-slate-500 hover:text-indigo-400"><i class="fa-regular fa-copy text-xs"></i></button>
+                            <button onclick="toggleVisibility(${item.id})" class="p-1.5 text-slate-500 hover:text-indigo-400 touch-active"><i class="fa-solid ${isPassVisible ? 'fa-eye-slash' : 'fa-eye'} text-xs"></i></button>
+                            <button onclick="copyToClipboard('${escapeJs(item.password)}')" class="p-1.5 text-slate-500 hover:text-indigo-400 touch-active"><i class="fa-regular fa-copy text-xs"></i></button>
                         </div>` : ''}
                     </div>
                     ${item.notes ? `
                     <div class="bg-indigo-950/20 border border-indigo-800/20 rounded-xl p-2 flex justify-between items-center gap-2">
                         <div class="text-[11px] text-indigo-300 break-all ${!isNoteVisible ? 'mask-text' : ''}">${escapeHtml(displayNotes)}</div>
-                        <button onclick="toggleNoteVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1"><i class="fa-solid ${isNoteVisible ? 'fa-eye-slash' : 'fa-eye'} text-xs"></i></button>
+                        <button onclick="toggleNoteVisibility(${item.id})" class="text-slate-500 hover:text-indigo-400 p-1 touch-active"><i class="fa-solid ${isNoteVisible ? 'fa-eye-slash' : 'fa-eye'} text-xs"></i></button>
                     </div>` : ''}
                 `;
                 mobileContainer.appendChild(card);
@@ -338,7 +551,7 @@
         }
 
         function openModalForAdd() {
-            if (!currentPasskey) { showToast("Primero desbloquea la app con la clave maestra"); return; }
+            if (records.length === 0) { showToast("Primero desbloquea el sistema"); return; }
             document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-key text-indigo-400"></i> Nuevo Registro';
             document.getElementById('modal-id').value = '';
             document.getElementById('record-form').reset();
@@ -377,10 +590,9 @@
                 records.unshift({ id: Date.now(), email, password, notes });
             }
 
-            updateUrlHash();
             filterRecords();
             closeModal();
-            showToast("Guardado y URL actualizada");
+            showToast("Registro guardado");
         }
 
         function deleteRecord(id) {
@@ -389,10 +601,20 @@
 
             if (confirm(`¿Eliminar registro?`)) {
                 records = records.filter(r => r.id !== id);
-                updateUrlHash();
                 filterRecords();
                 showToast("Registro eliminado");
             }
+        }
+
+        function exportData() {
+            if (records.length === 0) { showToast("Primero desbloquea el sistema"); return; }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `respaldo_credenciales_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
         }
 
         function escapeHtml(str) { return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : ''; }

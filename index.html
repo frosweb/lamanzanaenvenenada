@@ -50,7 +50,7 @@
     <!-- Banner Clave Maestra -->
     <div id="auth-banner" class="bg-indigo-950/50 border-b border-indigo-500/30 p-3.5 px-4 backdrop-blur-md">
         <div class="max-w-md mx-auto flex gap-2">
-            <input type="password" id="master-key" placeholder="Contraseña maestra (ej: ocumare2026)..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+            <input type="password" id="master-key" placeholder="Contraseña maestra (ej: 2026)..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
             <button onclick="decryptDatabase()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap touch-active transition-all">Desbloquear</button>
         </div>
     </div>
@@ -397,7 +397,7 @@
         let visiblePasswords = {};
         let visibleNotes = {};
         let allVisible = false;
-        const DEFAULT_PASS = "ocumare2026";
+        const DEFAULT_PASS = "2026";
 
         function saveToLocalStorage() {
             localStorage.setItem('gestor_credenciales_v2', JSON.stringify(rawDatabase));
